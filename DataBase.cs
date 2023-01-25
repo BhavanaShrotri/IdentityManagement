@@ -1,0 +1,51 @@
+﻿using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+
+namespace IdentityManagement
+{
+    public class DataBase
+    {
+        private static string UserHash(string username) =>
+            Convert.ToBase64String(MD5.HashData(Encoding.UTF8.GetBytes(username)));
+
+
+        public async Task<User> GetUserAsync(string username)
+        {
+            var hash = UserHash(username);
+            if (!File.Exists(hash))
+            {
+                return null;
+            }
+
+            await using var reader = File.OpenRead(hash);
+            return await JsonSerializer.DeserializeAsync<User>(reader);
+        }
+
+        public async Task putAsync(User user)
+        {
+            var hash = UserHash(user.UserName);
+            await using var writer = File.OpenWrite(hash);
+            await JsonSerializer.SerializeAsync(writer, user);
+        }
+    }
+
+    public class User
+    {
+        public string UserName { get; set; }
+        public string PasswordHash { get; set; }
+        public List<UserClaim> Claims { get; set; } = new();
+    }
+
+    public class UserClaim
+    {
+        public string Type { get; }
+        public string Value { get; }
+
+        public UserClaim(string type, string value)
+        {
+            Type = type;
+            Value = value;
+        }
+    }
+}
